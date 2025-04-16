@@ -16,10 +16,11 @@ import {
   Heart,
   Calendar
 } from "lucide-react";
-
+import { useNavigate } from 'react-router-dom';
 
 
 export default function HomePage() {
+  const navigate = useNavigate();
   const handleViewAllListings = () => {
     navigate('/properties');
   };
@@ -268,6 +269,7 @@ export default function HomePage() {
                 image:
                   "https://media.istockphoto.com/id/1409298953/photo/real-estate-agents-shake-hands-after-the-signing-of-the-contract-agreement-is-complete.jpg?s=612x612&w=0&k=20&c=SFybbpGMB0wIoI0tJotFqptzAYK_mICVITNdQIXqnyc=",
                 buttonText: "Start Buying",
+                onClick: () => navigate('/properties')
               },
               {
                 title: "Sell a Home",
@@ -279,6 +281,7 @@ export default function HomePage() {
                 image:
                   "https://media.istockphoto.com/id/171021377/photo/for-sale-sign-in-yard-of-house.jpg?s=612x612&w=0&k=20&c=4qhQYHOBROsTnP-63dQja5oCWT1mL8hEO0hbTDVDiKI=",
                 buttonText: "Start Selling",
+                onClick: () => navigate('/properties/sell')
               },
               {
                 title: "Rent a Home",
@@ -290,6 +293,7 @@ export default function HomePage() {
                 image:
                   "https://media.istockphoto.com/id/178150004/photo/smiling-hispanic-family-outside-rental-home.jpg?s=612x612&w=0&k=20&c=gNTKBytu6Akft5lp8QnLhIpHHb73c3Z0JvpbzEMql74=",
                 buttonText: "Start Renting",
+                onClick: () => navigate('/properties/rent')
               },
             ].map((item, idx) => (
               <motion.div
@@ -321,6 +325,7 @@ export default function HomePage() {
                 <motion.button
                   className={`px-6 py-3 ${item.btnBg} text-white rounded-lg shadow-md ${item.btnHover} transition w-full`}
                   whileHover={{ scale: 1.03 }}
+                  onClick={item.onClick}
                 >
                   {item.buttonText}
                 </motion.button>
