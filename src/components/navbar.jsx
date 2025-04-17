@@ -146,9 +146,9 @@ function Navbar() {
 
       {/* Right Section - Post Property Button */}
       <motion.button
-        className="bg-amber-800 text-white px-5 py-2 rounded-lg shadow-md hover:bg-amber-900 transition font-medium text-sm flex items-center"
+        className="bg-amber-800 text-white px-5 py-2 rounded-lg cursor-pointer shadow-md hover:bg-amber-900 transition font-medium text-sm flex items-center"
         whileHover={{ scale: 1.05 }}
-        onClick={() => navigate('/post-property')}
+        onClick={() => navigate('/cart')}
       >
         <ShoppingCart size={18} className="mr-2" />
         Post Property

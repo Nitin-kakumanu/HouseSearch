@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { User, Mail, Phone, MapPin, Home, Calendar, Lock, LogIn, LogOut, Edit, Heart, ShoppingCart } from 'lucide-react';
 import Navbar from './navbar'; // Import your Navbar component
 import Footer from './footer'; // Import your Footer component
+import { useNavigate } from 'react-router-dom';
 
 const ProfilePage = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -36,6 +37,7 @@ const ProfilePage = () => {
     const { name, value } = e.target;
     setLoginForm(prev => ({ ...prev, [name]: value }));
   };
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-stone-50 text-gray-800 flex flex-col">
@@ -217,7 +219,7 @@ const ProfilePage = () => {
                 </div>
                 <button
                   type="submit"
-                  className="w-full bg-amber-800 hover:bg-amber-900 text-white py-3 px-4 rounded-lg flex items-center justify-center transition"
+                  className="w-full bg-amber-800 hover:bg-amber-900 cursor-pointer text-white py-3 px-4 rounded-lg flex items-center justify-center transition"
                 >
                   <LogIn size={18} className="mr-2" />
                   Sign In
@@ -226,7 +228,8 @@ const ProfilePage = () => {
               <div className="mt-6 text-center">
                 <p className="text-gray-600">
                   Don't have an account?{' '}
-                  <button className="text-amber-800 hover:text-amber-900 font-medium">
+                  <button className="text-amber-800 hover:text-amber-900 font-medium cursor-pointer" onClick={() => navigate('/create')}>
+                    
                     Register here
                   </button>
                 </p>

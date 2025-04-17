@@ -53,6 +53,7 @@ export default function HomePage() {
           <motion.button
             className="mt-4 px-8 py-3 bg-amber-800 text-white rounded-lg shadow-lg hover:bg-amber-900 transition"
             whileHover={{ scale: 1.05 }}
+            onClick={() => navigate('/properties')}
           >
             Explore Listings
           </motion.button>
@@ -79,6 +80,7 @@ export default function HomePage() {
               <motion.button
                 className="px-6 py-3 bg-amber-800 text-white rounded-lg shadow-md hover:bg-amber-900 transition"
                 whileHover={{ scale: 1.03 }}
+                onClick={() => navigate('/profile')}
               >
                 Sign In
               </motion.button>
@@ -86,6 +88,7 @@ export default function HomePage() {
               <motion.button
                 className="px-6 py-3 border border-amber-800 text-amber-800 rounded-lg hover:bg-amber-50 transition"
                 whileHover={{ scale: 1.03 }}
+                onClick={() => navigate('/create')}
               >
                 Create Account
               </motion.button>
@@ -546,12 +549,14 @@ export default function HomePage() {
               <motion.button
                 className="px-8 py-3 bg-white text-amber-800 font-medium rounded-lg shadow-lg hover:bg-amber-50 transition"
                 whileHover={{ scale: 1.05 }}
+                onClick={() => navigate('/properties')}
               >
                 Browse Listings
               </motion.button>
               <motion.button
                 className="px-8 py-3 bg-transparent text-white border border-white rounded-lg hover:bg-amber-700 transition"
                 whileHover={{ scale: 1.05 }}
+                onClick={() => navigate('/about')}
               >
                 Contact Agent
               </motion.button>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from './navbar';
 import Footer from './footer';
 import { motion } from 'framer-motion';
@@ -12,46 +12,48 @@ import {
   Bath,
   Square,
   Heart,
-  Star
+  Star,
+  X
 } from 'lucide-react';
 
 const PropertyPage = () => {
   const [selectedOption, setSelectedOption] = useState('buy');
   const [favorites, setFavorites] = useState([]);
+  const [selectedProperty, setSelectedProperty] = useState(null);
 
-  const options = [
-    {
-      id: 'buy',
-      title: 'Buy Property',
-      description: 'Find your dream home from our extensive listings',
-      icon: <Home className="w-8 h-8 text-amber-800" />,
-      color: 'bg-amber-50',
-      hoverColor: 'hover:bg-amber-100'
-    },
-    {
-      id: 'sell',
-      title: 'Sell Property',
-      description: 'List your property and connect with potential buyers',
-      icon: <DollarSign className="w-8 h-8 text-amber-800" />,
-      color: 'bg-stone-50',
-      hoverColor: 'hover:bg-stone-100'
-    },
-    {
-      id: 'rent',
-      title: 'Rent Property',
-      description: 'Discover rental properties that match your needs',
-      icon: <Tag className="w-8 h-8 text-amber-800" />,
-      color: 'bg-amber-50',
-      hoverColor: 'hover:bg-amber-100'
+  // Initialize favorites from localStorage on component mount
+  useEffect(() => {
+    const currentCart = JSON.parse(localStorage.getItem('cart')) || [];
+    const favoriteIds = currentCart.map(item => item.id);
+    setFavorites(favoriteIds);
+  }, []);
+
+  const toggleFavorite = (property, e) => {
+    // Stop event propagation to prevent modal from opening
+    if (e) {
+      e.stopPropagation();
     }
-  ];
-
-  const toggleFavorite = (id) => {
-    if (favorites.includes(id)) {
-      setFavorites(favorites.filter(favId => favId !== id));
+    
+    // Get current cart from localStorage
+    const currentCart = JSON.parse(localStorage.getItem('cart')) || [];
+    
+    // Check if property already exists in cart
+    const existingItemIndex = currentCart.findIndex(item => item.id === property.id);
+    
+    let updatedCart;
+    
+    if (existingItemIndex >= 0) {
+      // If exists, remove from cart
+      updatedCart = currentCart.filter(item => item.id !== property.id);
+      setFavorites(favorites.filter(favId => favId !== property.id));
     } else {
-      setFavorites([...favorites, id]);
+      // If new, add to cart with quantity 1
+      updatedCart = [...currentCart, { ...property, quantity: 1 }];
+      setFavorites([...favorites, property.id]);
     }
+    
+    // Save to localStorage
+    localStorage.setItem('cart', JSON.stringify(updatedCart));
   };
 
   const formatPrice = (price) => {
@@ -62,6 +64,18 @@ const PropertyPage = () => {
     } else {
       return `₹${price.toLocaleString()}`;
     }
+  };
+
+  const openPropertyDetails = (property) => {
+    setSelectedProperty(property);
+    // Prevent body scrolling when modal is open
+    document.body.style.overflow = 'hidden';
+  };
+
+  const closePropertyDetails = () => {
+    setSelectedProperty(null);
+    // Re-enable scrolling when modal is closed
+    document.body.style.overflow = 'auto';
   };
 
   return (
@@ -80,9 +94,6 @@ const PropertyPage = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        {/* Option Selector */}
-       
-
         {/* Property Listings */}
         {selectedOption === 'buy' && (
           <div className="mb-16">
@@ -91,9 +102,10 @@ const PropertyPage = () => {
               {buyProperties.map((property) => (
                 <motion.div
                   key={property.id}
-                  className="bg-white rounded-xl shadow-md overflow-hidden group"
+                  className="bg-white rounded-xl shadow-md overflow-hidden group cursor-pointer"
                   whileHover={{ y: -5 }}
                   transition={{ duration: 0.3 }}
+                  onClick={() => openPropertyDetails(property)}
                 >
                   <div className="relative">
                     <img
@@ -103,7 +115,7 @@ const PropertyPage = () => {
                     />
                     <button 
                       className="absolute top-4 right-4 bg-white p-2 rounded-full shadow-md hover:bg-amber-50 transition"
-                      onClick={() => toggleFavorite(property.id)}
+                      onClick={(e) => toggleFavorite(property, e)}
                     >
                       <Heart
                         size={20}
@@ -157,13 +169,125 @@ const PropertyPage = () => {
                       <span className="text-sm text-gray-500">({property.reviews} reviews)</span>
                     </div>
 
-                    <button className="mt-6 w-full py-2 bg-amber-800 hover:bg-amber-900 text-white rounded-lg font-medium transition">
+                    <button 
+                      className="mt-6 w-full py-2 bg-amber-800 hover:bg-amber-900 text-white rounded-lg font-medium transition"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openPropertyDetails(property);
+                      }}
+                    >
                       View Details
                     </button>
                   </div>
                 </motion.div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Property Detail Modal - Updated to match RentPropertyPage style */}
+        {selectedProperty && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              className="bg-white rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+            >
+              <div className="relative">
+                <img
+                  src={selectedProperty.image}
+                  alt={selectedProperty.title}
+                  className="w-full h-64 object-cover rounded-t-xl"
+                />
+                <button 
+                  className="absolute top-4 right-4 bg-white p-2 rounded-full shadow-md hover:bg-amber-50 transition"
+                  onClick={closePropertyDetails}
+                >
+                  <X size={20} className="text-amber-800" />
+                </button>
+                <div className="absolute bottom-4 left-4">
+                  <span className="bg-amber-800 text-white px-3 py-1 rounded-full text-sm">
+                    For Sale
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-800">{selectedProperty.title}</h2>
+                    <p className="text-gray-600 flex items-center mt-2">
+                      <MapPin size={16} className="mr-2" /> {selectedProperty.location}
+                    </p>
+                  </div>
+                  <p className="text-amber-800 font-bold text-xl">
+                    {formatPrice(selectedProperty.price)}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4 my-6">
+                  <div className="bg-amber-50 p-4 rounded-lg text-center">
+                    <Bed size={20} className="mx-auto text-amber-800 mb-2" />
+                    <p className="font-medium">{selectedProperty.bedrooms} Bedrooms</p>
+                  </div>
+                  <div className="bg-amber-50 p-4 rounded-lg text-center">
+                    <Bath size={20} className="mx-auto text-amber-800 mb-2" />
+                    <p className="font-medium">{selectedProperty.bathrooms} Bathrooms</p>
+                  </div>
+                  <div className="bg-amber-50 p-4 rounded-lg text-center">
+                    <Square size={20} className="mx-auto text-amber-800 mb-2" />
+                    <p className="font-medium">{selectedProperty.area} sq.ft</p>
+                  </div>
+                </div>
+
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Description</h3>
+                  <p className="text-gray-600">
+                    This beautiful {selectedProperty.type ? selectedProperty.type.toLowerCase() : 'property'} features modern amenities and 
+                    is located in the heart of {selectedProperty.location.split(',')[0]}. 
+                    The property has been well-maintained and comes with all necessary furnishings.
+                  </p>
+                </div>
+
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Amenities</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {['Parking', 'Security', 'Elevator', 'Swimming Pool', 'Gym', '24/7 Water'].map(amenity => (
+                      <div key={amenity} className="flex items-center">
+                        <div className="w-2 h-2 bg-amber-800 rounded-full mr-2"></div>
+                        <span className="text-gray-600">{amenity}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between border-t border-gray-100 pt-4">
+                  <div className="flex items-center">
+                    <div className="flex text-amber-500 mr-2">
+                      {[...Array(5)].map((_, i) => (
+                        <Star 
+                          key={i} 
+                          size={16} 
+                          fill={i < selectedProperty.rating ? "#f59e0b" : "none"} 
+                          stroke="#f59e0b" 
+                        />
+                      ))}
+                    </div>
+                    <span className="text-gray-600">({selectedProperty.reviews} reviews)</span>
+                  </div>
+                  <button 
+                    className="px-6 py-2 bg-amber-800 hover:bg-amber-900 text-white rounded-lg font-medium transition"
+                    onClick={() => {
+                      toggleFavorite(selectedProperty);
+                      closePropertyDetails();
+                    }}
+                  >
+                    {favorites.includes(selectedProperty.id) ? 'Remove from Cart' : 'Add to Cart'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
           </div>
         )}
 
@@ -196,6 +320,7 @@ const buyProperties = [
     bedrooms: 3,
     bathrooms: 2,
     area: 1450,
+    type: "Apartment",
     rating: 4,
     reviews: 12,
     image: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60"
@@ -208,6 +333,7 @@ const buyProperties = [
     bedrooms: 4,
     bathrooms: 3,
     area: 2200,
+    type: "Villa",
     rating: 5,
     reviews: 8,
     image: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60"
@@ -220,6 +346,7 @@ const buyProperties = [
     bedrooms: 3,
     bathrooms: 3,
     area: 3200,
+    type: "Penthouse",
     rating: 5,
     reviews: 4,
     image: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60"
@@ -232,6 +359,7 @@ const buyProperties = [
     bedrooms: 5,
     bathrooms: 4,
     area: 4200,
+    type: "Bungalow",
     rating: 5,
     reviews: 5,
     image: "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60"
@@ -244,6 +372,7 @@ const buyProperties = [
     bedrooms: 4,
     bathrooms: 3,
     area: 2200,
+    type: "House",
     rating: 4,
     reviews: 6,
     image: "https://images.unsplash.com/photo-1493809842364-78817add7ffb?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60"
@@ -256,6 +385,7 @@ const buyProperties = [
     bedrooms: 4,
     bathrooms: 4,
     area: 3800,
+    type: "Villa",
     rating: 5,
     reviews: 9,
     image: "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60"
