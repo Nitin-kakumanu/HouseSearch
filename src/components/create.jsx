@@ -17,6 +17,9 @@ export default function CreateAccountPage() {
     confirmPassword: '',
     agreeTerms: false
   });
+  useEffect(() => {
+      window.scrollTo(0, 0);
+    }, []);
   const [formErrors, setFormErrors] = useState({});
 
   const handleChange = (e) => {

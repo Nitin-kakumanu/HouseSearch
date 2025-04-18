@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Navbar from "./navbar";
 import Footer from "./footer";
@@ -8,6 +8,7 @@ const SearchPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredProperties, setFilteredProperties] = useState([]);
 
+  // Sample property data
   const properties = [
     {
       id: 1,
@@ -83,6 +84,16 @@ const SearchPage = () => {
     }
   ];
 
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  // Handle search as user types
+  useEffect(() => {
+    handleSearch();
+  }, [searchQuery]);
+
   const handleSearch = () => {
     if (!searchQuery.trim()) {
       setFilteredProperties([]);
@@ -90,18 +101,22 @@ const SearchPage = () => {
     }
 
     const results = properties.filter(property => {
-      const query = searchQuery.toLowerCase();
+      const queryLower = searchQuery.toLowerCase();
       return (
-        property.title.toLowerCase().includes(query) ||
-        property.location.toLowerCase().includes(query) ||
-        property.type.toLowerCase().includes(query) ||
-        property.purpose.toLowerCase().includes(query) ||
-        property.price.toString().includes(query) ||
-        property.bedrooms.toString().includes(query)
+        property.title.toLowerCase().includes(queryLower) ||
+        property.location.toLowerCase().includes(queryLower) ||
+        property.type.toLowerCase().includes(queryLower) ||
+        property.purpose.toLowerCase().includes(queryLower) ||
+        property.price.toString().includes(queryLower) ||
+        property.bedrooms.toString().includes(queryLower)
       );
     });
 
     setFilteredProperties(results);
+  };
+
+  const handleInputChange = (e) => {
+    setSearchQuery(e.target.value);
   };
 
   const formatPrice = (price) => {
@@ -134,8 +149,7 @@ const SearchPage = () => {
                 placeholder="Search by location, property type, price, etc..."
                 className="w-full pl-12 pr-4 py-3 border border-stone-200 rounded-lg focus:ring-2 focus:ring-amber-800 focus:border-amber-800 outline-none"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                onChange={handleInputChange}
               />
             </div>
             <button

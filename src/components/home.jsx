@@ -17,6 +17,7 @@ import {
   Calendar
 } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 
 
 export default function HomePage() {
@@ -24,6 +25,9 @@ export default function HomePage() {
   const handleViewAllListings = () => {
     navigate('/properties');
   };
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   return (
     <div className="overflow-x-hidden bg-stone-50 text-gray-800 font-sans">
       <Navbar />
@@ -70,7 +74,6 @@ export default function HomePage() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <div className="inline-block mb-2 px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-sm font-medium">Personalized For You</div>
             <h3 className="text-3xl font-semibold text-slate-800 mb-4">Get Home Recommendations</h3>
             <p className="text-gray-700">
               We'll suggest homes based on your preferences, desired location, and budget. Create an account to get started with personalized recommendations.

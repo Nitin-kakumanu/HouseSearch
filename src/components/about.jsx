@@ -15,8 +15,12 @@ import {
   MapPin,
   PhoneCall
 } from "lucide-react";
+import { useEffect } from 'react';
 
 export default function AboutPage() {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   return (
     <div className="overflow-x-hidden bg-stone-50 text-gray-800 font-sans">
   <Navbar />

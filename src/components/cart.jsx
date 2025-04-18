@@ -22,6 +22,10 @@ const CartPage = () => {
   const [selectedProperty, setSelectedProperty] = useState(null);
 
   useEffect(() => {
+      window.scrollTo(0, 0);
+    }, []);
+
+  useEffect(() => {
     const loadCart = () => {
       try {
         const storedCart = localStorage.getItem('cart');

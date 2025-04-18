@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Home,
@@ -11,7 +11,8 @@ import {
   Image,
   Trash2,
   Plus,
-  Check
+  Check,
+  Loader
 } from 'lucide-react';
 import Navbar from './navbar';
 import Footer from './footer';
@@ -26,37 +27,47 @@ const SellPropertyPage = () => {
     bathrooms: '',
     area: '',
     price: '',
-    amenities: []
+    amenities: [],
+    user_id: 1 // Default user ID - in a real app, you'd get this from auth
   });
 
   const [uploadedImages, setUploadedImages] = useState([]);
   const [previewImages, setPreviewImages] = useState([]);
   const [currentStep, setCurrentStep] = useState(1);
   const [amenityInput, setAmenityInput] = useState('');
-
-  // Sample data for previously listed properties
-  const listedProperties = [
-    {
-      id: 1,
-      title: "Luxury 3BHK Apartment",
-      location: "Bandra West, Mumbai",
-      price: "₹1.25 Cr",
-      status: "Active",
-      image: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60"
-    },
-    {
-      id: 2,
-      title: "Modern 2BHK Villa",
-      location: "Whitefield, Bangalore",
-      price: "₹85 Lakh",
-      status: "Sold",
-      image: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60"
-    }
-  ];
+  const [listedProperties, setListedProperties] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
 
   const propertyTypes = [
     "Apartment", "Villa", "House", "Plot", "Commercial", "Farm House"
   ];
+
+  // Fetch user's listed properties
+  useEffect(() => {
+    fetchListedProperties();
+    window.scrollTo(0, 0);
+  }, []);
+
+  const fetchListedProperties = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`http://localhost/house/cards.php?action=list&user_id=${formData.user_id}`);
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        setListedProperties(data.data);
+      } else {
+        console.error('Error fetching properties:', data.message);
+      }
+    } catch (error) {
+      console.error('Failed to fetch properties:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -68,9 +79,18 @@ const SellPropertyPage = () => {
 
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
+    
+    // In a real implementation, you would upload these files to your server
+    // and get back URLs. For now, we'll use local object URLs
     const newPreviewImages = files.map(file => URL.createObjectURL(file));
     setPreviewImages([...previewImages, ...newPreviewImages]);
-    setUploadedImages([...uploadedImages, ...files]);
+    
+    // In a real app, you'd replace this with actual uploaded image URLs
+    // This is a placeholder - normally you'd upload the image and get a URL back
+    const fakeUploadedUrls = newPreviewImages.map((_, index) => 
+      `property-image-${Date.now()}-${index}.jpg`
+    );
+    setUploadedImages([...uploadedImages, ...fakeUploadedUrls]);
   };
 
   const removeImage = (index) => {
@@ -102,11 +122,63 @@ const SellPropertyPage = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle form submission logic here
-    console.log({ ...formData, images: uploadedImages });
-    alert('Property listing submitted successfully!');
+    setSubmitting(true);
+    setSubmitError(null);
+    
+    try {
+      // Prepare data for submission
+      const submissionData = {
+        ...formData,
+        images: uploadedImages
+      };
+      
+      // Send data to the server
+      const response = await fetch('http://localhost/house/cards.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(submissionData),
+      });
+      
+      const result = await response.json();
+      
+      if (result.status === 'success') {
+        setSubmitSuccess(true);
+        
+        // Reset form
+        setFormData({
+          title: '',
+          location: '',
+          description: '',
+          propertyType: '',
+          bedrooms: '',
+          bathrooms: '',
+          area: '',
+          price: '',
+          amenities: [],
+          user_id: formData.user_id
+        });
+        setUploadedImages([]);
+        setPreviewImages([]);
+        setCurrentStep(1);
+        
+        // Refresh the listed properties
+        fetchListedProperties();
+        
+        // Show success message
+        alert('Property listing submitted successfully!');
+      } else {
+        setSubmitError(result.message || 'Failed to submit property listing');
+      }
+    } catch (error) {
+      console.error('Error submitting property:', error);
+      setSubmitError('An unexpected error occurred. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -376,11 +448,11 @@ const SellPropertyPage = () => {
                             <p><span className="text-gray-500">Title:</span> {formData.title || '-'}</p>
                             <p><span className="text-gray-500">Location:</span> {formData.location || '-'}</p>
                             <p><span className="text-gray-500">Type:</span> {formData.propertyType || '-'}</p>
-                            <p><span className="text-gray-500">Price:</span> {formData.price ? `₹${formData.price.toLocaleString()}` : '-'}</p>
+                            <p><span className="text-gray-500">Price:</span> {formData.price ? `₹${parseInt(formData.price).toLocaleString()}` : '-'}</p>
                           </div>
                         </div>
                         <div>
-                          <h4 className="font-medium text-gray-700 mb-2">Property Specifications</h4>
+                        <h4 className="font-medium text-gray-700 mb-2">Property Specifications</h4>
                           <div className="space-y-2">
                             <p><span className="text-gray-500">Bedrooms:</span> {formData.bedrooms || '-'}</p>
                             <p><span className="text-gray-500">Bathrooms:</span> {formData.bathrooms || '-'}</p>
@@ -418,6 +490,12 @@ const SellPropertyPage = () => {
                         <p className="text-gray-500">No images uploaded</p>
                       )}
                     </div>
+                    
+                    {submitError && (
+                      <div className="mt-4 p-3 bg-red-50 text-red-700 rounded-lg">
+                        {submitError}
+                      </div>
+                    )}
                   </motion.div>
                 )}
 
@@ -446,10 +524,20 @@ const SellPropertyPage = () => {
                   ) : (
                     <button
                       type="submit"
-                      className="px-6 py-2 bg-amber-800 text-white rounded-lg hover:bg-amber-900 transition flex items-center"
+                      disabled={submitting}
+                      className="px-6 py-2 bg-amber-800 text-white rounded-lg hover:bg-amber-900 transition flex items-center disabled:opacity-70 disabled:cursor-not-allowed"
                     >
-                      <Check className="mr-2" size={18} />
-                      Submit Listing
+                      {submitting ? (
+                        <>
+                          <Loader className="animate-spin mr-2" size={18} />
+                          Submitting...
+                        </>
+                      ) : (
+                        <>
+                          <Check className="mr-2" size={18} />
+                          Submit Listing
+                        </>
+                      )}
                     </button>
                   )}
                 </div>
@@ -464,12 +552,16 @@ const SellPropertyPage = () => {
                 <h3 className="text-xl font-semibold text-gray-800">Your Listed Properties</h3>
               </div>
               
-              {listedProperties.length > 0 ? (
+              {loading ? (
+                <div className="p-12 flex justify-center">
+                  <Loader className="animate-spin text-amber-800" />
+                </div>
+              ) : listedProperties.length > 0 ? (
                 <div className="divide-y divide-gray-200">
                   {listedProperties.map(property => (
                     <div key={property.id} className="p-4 flex items-center">
                       <img
-                        src={property.image}
+                        src={property.image || "https://via.placeholder.com/150"}
                         alt={property.title}
                         className="w-16 h-16 object-cover rounded-lg mr-4"
                       />
@@ -477,7 +569,7 @@ const SellPropertyPage = () => {
                         <h4 className="font-medium text-gray-800">{property.title}</h4>
                         <p className="text-sm text-gray-500">{property.location}</p>
                         <div className="flex justify-between items-center mt-1">
-                          <span className="text-amber-800 font-medium">{property.price}</span>
+                          <span className="text-amber-800 font-medium">₹{parseInt(property.price).toLocaleString()}</span>
                           <span className={`px-2 py-1 text-xs rounded-full ${
                             property.status === 'Active' 
                               ? 'bg-green-100 text-green-800' 

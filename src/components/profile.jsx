@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { User, Mail, Phone, MapPin, Home, Calendar, Lock, LogIn, LogOut, Edit, Heart, ShoppingCart } from 'lucide-react';
 import Navbar from './navbar'; // Import your Navbar component
@@ -32,6 +32,10 @@ const ProfilePage = () => {
   const handleLogout = () => {
     setIsLoggedIn(false);
   };
+
+  useEffect(() => {
+      window.scrollTo(0, 0);
+    }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;

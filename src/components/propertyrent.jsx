@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   MapPin,
@@ -25,6 +25,39 @@ const RentPropertyPage = () => {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState(null);
+  const [properties, setProperties] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch properties from backend
+  useEffect(() => {
+    const fetchProperties = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('http://localhost/house/rents.php');
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        setProperties(data);
+        setLoading(false);
+      } catch (error) {
+        console.error("Failed to fetch properties:", error);
+        setError("Failed to load properties. Please try again later.");
+        setLoading(false);
+      }
+    };
+
+    fetchProperties();
+    
+    // Load favorites from localStorage
+    const storedFavorites = JSON.parse(localStorage.getItem('favorites')) || [];
+    setFavorites(storedFavorites);
+    
+    window.scrollTo(0, 0);
+  }, []);
 
   const toggleFavorite = (property) => {
     // Get current cart from localStorage
@@ -46,6 +79,10 @@ const RentPropertyPage = () => {
     
     // Save to localStorage
     localStorage.setItem('cart', JSON.stringify(updatedCart));
+    // Also save favorites separately
+    localStorage.setItem('favorites', JSON.stringify(favorites.includes(property.id) 
+      ? favorites.filter(id => id !== property.id) 
+      : [...favorites, property.id]));
   };
 
   const handleFilterChange = (e) => {
@@ -65,7 +102,7 @@ const RentPropertyPage = () => {
     setSearchQuery('');
   };
 
-  const filteredProperties = rentProperties.filter(property => {
+  const filteredProperties = properties.filter(property => {
     // Search filter
     const matchesSearch = 
       property.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -81,6 +118,35 @@ const RentPropertyPage = () => {
     
     return matchesSearch && matchesBedrooms && matchesPrice && matchesType;
   });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-amber-800 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading properties...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
+        <div className="text-center max-w-md px-4">
+          <div className="text-red-500 text-5xl mb-4">!</div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Error Loading Properties</h2>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-amber-800 text-white rounded-lg hover:bg-amber-900 transition"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-stone-50">
@@ -98,6 +164,78 @@ const RentPropertyPage = () => {
 
       {/* Search and Filters */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        {/* Filter Options */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <button 
+              className="flex items-center text-amber-800 font-medium"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <Filter className="mr-2" size={18} />
+              Filters
+              <ChevronDown className={`ml-1 transition-transform ${showFilters ? 'rotate-180' : ''}`} size={18} />
+            </button>
+            {(filters.bedrooms || filters.priceRange || filters.propertyType) && (
+              <button 
+                className="text-sm text-gray-500 hover:text-amber-800"
+                onClick={clearFilters}
+              >
+                Clear all filters
+              </button>
+            )}
+          </div>
+          
+          {showFilters && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-white rounded-lg shadow-sm border border-gray-100">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Bedrooms</label>
+                <select
+                  name="bedrooms"
+                  value={filters.bedrooms}
+                  onChange={handleFilterChange}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-amber-800 outline-none"
+                >
+                  <option value="">Any</option>
+                  <option value="1">1+</option>
+                  <option value="2">2+</option>
+                  <option value="3">3+</option>
+                  <option value="4">4+</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Price Range</label>
+                <select
+                  name="priceRange"
+                  value={filters.priceRange}
+                  onChange={handleFilterChange}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-amber-800 outline-none"
+                >
+                  <option value="">Any</option>
+                  <option value="under-20k">Under ₹20,000</option>
+                  <option value="20k-40k">₹20,000 - ₹40,000</option>
+                  <option value="above-40k">Above ₹40,000</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Property Type</label>
+                <select
+                  name="propertyType"
+                  value={filters.propertyType}
+                  onChange={handleFilterChange}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-amber-800 outline-none"
+                >
+                  <option value="">Any</option>
+                  <option value="Apartment">Apartment</option>
+                  <option value="Villa">Villa</option>
+                  <option value="Studio">Studio</option>
+                  <option value="House">House</option>
+                </select>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Results Count */}
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold text-gray-800">
@@ -279,9 +417,9 @@ const RentPropertyPage = () => {
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold text-gray-800 mb-2">Description</h3>
                   <p className="text-gray-600">
-                    This beautiful {selectedProperty.type.toLowerCase()} features modern amenities and 
-                    is located in the heart of {selectedProperty.location.split(',')[0]}. 
-                    The property has been well-maintained and comes with all necessary furnishings.
+                    {selectedProperty.description || `This beautiful ${selectedProperty.type.toLowerCase()} features modern amenities and 
+                    is located in the heart of ${selectedProperty.location.split(',')[0]}. 
+                    The property has been well-maintained and comes with all necessary furnishings.`}
                   </p>
                 </div>
 
@@ -377,87 +515,5 @@ const RentPropertyPage = () => {
     </div>
   );
 };
-
-// Sample data for rent properties
-const rentProperties = [
-  {
-    id: 1,
-    title: "Modern 2BHK Apartment",
-    location: "Koramangala, Bangalore",
-    price: 25000,
-    bedrooms: 2,
-    bathrooms: 2,
-    area: 1100,
-    type: "Apartment",
-    rating: 4,
-    reviews: 15,
-    image: "https://images.unsplash.com/photo-1493809842364-78817add7ffb?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60"
-  },
-  {
-    id: 2,
-    title: "Luxury 3BHK Apartment",
-    location: "Bandra West, Mumbai",
-    price: 45000,
-    bedrooms: 3,
-    bathrooms: 2,
-    area: 1450,
-    type: "Apartment",
-    rating: 5,
-    reviews: 12,
-    image: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60"
-  },
-  {
-    id: 3,
-    title: "Cozy Studio Apartment",
-    location: "Connaught Place, Delhi",
-    price: 18000,
-    bedrooms: 1,
-    bathrooms: 1,
-    area: 500,
-    type: "Studio",
-    rating: 4,
-    reviews: 8,
-    image: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60"
-  },
-  {
-    id: 4,
-    title: "Spacious 3BHK Villa",
-    location: "Whitefield, Bangalore",
-    price: 55000,
-    bedrooms: 3,
-    bathrooms: 3,
-    area: 1800,
-    type: "Villa",
-    rating: 5,
-    reviews: 7,
-    image: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60"
-  },
-  {
-    id: 5,
-    title: "Elegant 2BHK Apartment",
-    location: "Gurgaon",
-    price: 32000,
-    bedrooms: 2,
-    bathrooms: 2,
-    area: 1100,
-    type: "Apartment",
-    rating: 4,
-    reviews: 10,
-    image: "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60"
-  },
-  {
-    id: 6,
-    title: "Premium 1BHK Apartment",
-    location: "Pune",
-    price: 22000,
-    bedrooms: 1,
-    bathrooms: 1,
-    area: 700,
-    type: "Apartment",
-    rating: 3,
-    reviews: 5,
-    image: "https://images.unsplash.com/photo-1493809842364-78817add7ffb?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60"
-  }
-];
 
 export default RentPropertyPage;

@@ -20,40 +20,144 @@ const PropertyPage = () => {
   const [selectedOption, setSelectedOption] = useState('buy');
   const [favorites, setFavorites] = useState([]);
   const [selectedProperty, setSelectedProperty] = useState(null);
+  const [properties, setProperties] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Initialize favorites from localStorage on component mount
   useEffect(() => {
-    const currentCart = JSON.parse(localStorage.getItem('cart')) || [];
-    const favoriteIds = currentCart.map(item => item.id);
-    setFavorites(favoriteIds);
+    window.scrollTo(0, 0);
   }, []);
 
-  const toggleFavorite = (property, e) => {
+  // Fetch properties from PHP backend
+  useEffect(() => {
+    const fetchProperties = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('http://localhost/house/cards.php');
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+          setProperties(result.data);
+        } else {
+          throw new Error(result.message || 'Failed to fetch properties');
+        }
+      } catch (err) {
+        setError(err.message);
+        console.error('Error fetching properties:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProperties();
+  }, []);
+
+  // Fetch user's favorites from backend
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      try {
+        const response = await fetch('http://localhost/house/cards.php', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'get_favorites'
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+          // Extract just the IDs for easier comparison
+          const favoriteIds = result.data.map(item => item.id);
+          setFavorites(favoriteIds);
+        }
+      } catch (err) {
+        console.error('Error fetching favorites:', err);
+        
+        // Fall back to localStorage if API fails
+        const currentCart = JSON.parse(localStorage.getItem('cart')) || [];
+        const favoriteIds = currentCart.map(item => item.id);
+        setFavorites(favoriteIds);
+      }
+    };
+
+    fetchFavorites();
+  }, []);
+
+  const toggleFavorite = async (property, e) => {
     // Stop event propagation to prevent modal from opening
     if (e) {
       e.stopPropagation();
     }
     
-    // Get current cart from localStorage
-    const currentCart = JSON.parse(localStorage.getItem('cart')) || [];
-    
-    // Check if property already exists in cart
-    const existingItemIndex = currentCart.findIndex(item => item.id === property.id);
-    
-    let updatedCart;
-    
-    if (existingItemIndex >= 0) {
-      // If exists, remove from cart
-      updatedCart = currentCart.filter(item => item.id !== property.id);
-      setFavorites(favorites.filter(favId => favId !== property.id));
-    } else {
-      // If new, add to cart with quantity 1
-      updatedCart = [...currentCart, { ...property, quantity: 1 }];
-      setFavorites([...favorites, property.id]);
+    try {
+      // Call the PHP API to toggle favorite status
+      const response = await fetch('http://localhost/house/cards.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'toggle_favorite',
+          property_id: property.id
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.status === 'success') {
+        // Update local state based on the action performed
+        if (result.action === 'added') {
+          setFavorites([...favorites, property.id]);
+        } else {
+          setFavorites(favorites.filter(favId => favId !== property.id));
+        }
+        
+        // Also update localStorage for offline support
+        const currentCart = JSON.parse(localStorage.getItem('cart')) || [];
+        let updatedCart;
+        
+        if (result.action === 'added') {
+          updatedCart = [...currentCart, { ...property, quantity: 1 }];
+        } else {
+          updatedCart = currentCart.filter(item => item.id !== property.id);
+        }
+        
+        localStorage.setItem('cart', JSON.stringify(updatedCart));
+      }
+    } catch (err) {
+      console.error('Error toggling favorite:', err);
+      
+      // Fall back to localStorage if API fails
+      const currentCart = JSON.parse(localStorage.getItem('cart')) || [];
+      const existingItemIndex = currentCart.findIndex(item => item.id === property.id);
+      let updatedCart;
+      
+      if (existingItemIndex >= 0) {
+        updatedCart = currentCart.filter(item => item.id !== property.id);
+        setFavorites(favorites.filter(favId => favId !== property.id));
+      } else {
+        updatedCart = [...currentCart, { ...property, quantity: 1 }];
+        setFavorites([...favorites, property.id]);
+      }
+      
+      localStorage.setItem('cart', JSON.stringify(updatedCart));
     }
-    
-    // Save to localStorage
-    localStorage.setItem('cart', JSON.stringify(updatedCart));
   };
 
   const formatPrice = (price) => {
@@ -98,90 +202,107 @@ const PropertyPage = () => {
         {selectedOption === 'buy' && (
           <div className="mb-16">
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Properties For Sale</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {buyProperties.map((property) => (
-                <motion.div
-                  key={property.id}
-                  className="bg-white rounded-xl shadow-md overflow-hidden group cursor-pointer"
-                  whileHover={{ y: -5 }}
-                  transition={{ duration: 0.3 }}
-                  onClick={() => openPropertyDetails(property)}
+            
+            {loading ? (
+              <div className="text-center py-10">
+                <p className="text-gray-600">Loading properties...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center py-10">
+                <p className="text-red-500">Error: {error}</p>
+                <button 
+                  className="mt-4 px-4 py-2 bg-amber-800 text-white rounded-lg"
+                  onClick={() => window.location.reload()}
                 >
-                  <div className="relative">
-                    <img
-                      src={property.image}
-                      alt={property.title}
-                      className="w-full h-48 object-cover"
-                    />
-                    <button 
-                      className="absolute top-4 right-4 bg-white p-2 rounded-full shadow-md hover:bg-amber-50 transition"
-                      onClick={(e) => toggleFavorite(property, e)}
-                    >
-                      <Heart
-                        size={20}
-                        className={favorites.includes(property.id) ? "text-red-500 fill-red-500" : "text-amber-800"}
+                  Try Again
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {properties.map((property) => (
+                  <motion.div
+                    key={property.id}
+                    className="bg-white rounded-xl shadow-md overflow-hidden group cursor-pointer"
+                    whileHover={{ y: -5 }}
+                    transition={{ duration: 0.3 }}
+                    onClick={() => openPropertyDetails(property)}
+                  >
+                    <div className="relative">
+                      <img
+                        src={property.image}
+                        alt={property.title}
+                        className="w-full h-48 object-cover"
                       />
-                    </button>
-                    <div className="absolute bottom-4 left-4">
-                      <span className="bg-amber-800 text-white px-3 py-1 rounded-full text-sm">
-                        For Sale
-                      </span>
+                      <button 
+                        className="absolute top-4 right-4 bg-white p-2 rounded-full shadow-md hover:bg-amber-50 transition"
+                        onClick={(e) => toggleFavorite(property, e)}
+                      >
+                        <Heart
+                          size={20}
+                          className={favorites.includes(parseInt(property.id)) ? "text-red-500 fill-red-500" : "text-amber-800"}
+                        />
+                      </button>
+                      <div className="absolute bottom-4 left-4">
+                        <span className="bg-amber-800 text-white px-3 py-1 rounded-full text-sm">
+                          For Sale
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="p-6">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-semibold text-lg text-gray-800 group-hover:text-amber-800 transition">
-                          {property.title}
-                        </h3>
-                        <p className="text-gray-500 text-sm mt-1 flex items-center">
-                          <MapPin size={14} className="mr-1" /> {property.location}
+                    <div className="p-6">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-semibold text-lg text-gray-800 group-hover:text-amber-800 transition">
+                            {property.title}
+                          </h3>
+                          <p className="text-gray-500 text-sm mt-1 flex items-center">
+                            <MapPin size={14} className="mr-1" /> {property.location}
+                          </p>
+                        </div>
+                        <p className="text-amber-800 font-semibold">
+                          {formatPrice(parseFloat(property.price))}
                         </p>
                       </div>
-                      <p className="text-amber-800 font-semibold">
-                        {formatPrice(property.price)}
-                      </p>
-                    </div>
 
-                    <div className="border-t border-gray-100 mt-4 pt-4 flex justify-between text-sm text-gray-600">
-                      <span className="flex items-center">
-                        <Bed size={14} className="mr-1" /> {property.bedrooms} Beds
-                      </span>
-                      <span className="flex items-center">
-                        <Bath size={14} className="mr-1" /> {property.bathrooms} Baths
-                      </span>
-                      <span className="flex items-center">
-                        <Square size={14} className="mr-1" /> {property.area} sq.ft
-                      </span>
-                    </div>
-
-                    <div className="mt-4 flex items-center">
-                      <div className="flex text-amber-500 mr-2">
-                        {[...Array(5)].map((_, i) => (
-                          <Star 
-                            key={i} 
-                            size={14} 
-                            fill={i < property.rating ? "#f59e0b" : "none"} 
-                            stroke="#f59e0b" 
-                          />
-                        ))}
+                      <div className="border-t border-gray-100 mt-4 pt-4 flex justify-between text-sm text-gray-600">
+                        <span className="flex items-center">
+                          <Bed size={14} className="mr-1" /> {property.bedrooms} Beds
+                        </span>
+                        <span className="flex items-center">
+                          <Bath size={14} className="mr-1" /> {property.bathrooms} Baths
+                        </span>
+                        <span className="flex items-center">
+                          <Square size={14} className="mr-1" /> {property.area} sq.ft
+                        </span>
                       </div>
-                      <span className="text-sm text-gray-500">({property.reviews} reviews)</span>
-                    </div>
 
-                    <button 
-                      className="mt-6 w-full py-2 bg-amber-800 hover:bg-amber-900 text-white rounded-lg font-medium transition"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openPropertyDetails(property);
-                      }}
-                    >
-                      View Details
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+                      <div className="mt-4 flex items-center">
+                        <div className="flex text-amber-500 mr-2">
+                          {[...Array(5)].map((_, i) => (
+                            <Star 
+                              key={i} 
+                              size={14} 
+                              fill={i < property.rating ? "#f59e0b" : "none"} 
+                              stroke="#f59e0b" 
+                            />
+                          ))}
+                        </div>
+                        <span className="text-sm text-gray-500">({property.reviews} reviews)</span>
+                      </div>
+
+                      <button 
+                        className="mt-6 w-full py-2 bg-amber-800 hover:bg-amber-900 text-white rounded-lg font-medium transition"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openPropertyDetails(property);
+                        }}
+                      >
+                        View Details
+                      </button>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -222,7 +343,7 @@ const PropertyPage = () => {
                     </p>
                   </div>
                   <p className="text-amber-800 font-bold text-xl">
-                    {formatPrice(selectedProperty.price)}
+                    {formatPrice(parseFloat(selectedProperty.price))}
                   </p>
                 </div>
 
@@ -283,7 +404,7 @@ const PropertyPage = () => {
                       closePropertyDetails();
                     }}
                   >
-                    {favorites.includes(selectedProperty.id) ? 'Remove from Cart' : 'Add to Cart'}
+                    {favorites.includes(parseInt(selectedProperty.id)) ? 'Remove from Cart' : 'Add to Cart'}
                   </button>
                 </div>
               </div>
@@ -309,87 +430,5 @@ const PropertyPage = () => {
     </div>
   );
 };
-
-// Sample data for buy properties
-const buyProperties = [
-  {
-    id: 1,
-    title: "Luxury 3BHK Apartment",
-    location: "Bandra West, Mumbai",
-    price: 12500000,
-    bedrooms: 3,
-    bathrooms: 2,
-    area: 1450,
-    type: "Apartment",
-    rating: 4,
-    reviews: 12,
-    image: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60"
-  },
-  {
-    id: 2,
-    title: "Modern 4BHK Villa",
-    location: "Whitefield, Bangalore",
-    price: 18500000,
-    bedrooms: 4,
-    bathrooms: 3,
-    area: 2200,
-    type: "Villa",
-    rating: 5,
-    reviews: 8,
-    image: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60"
-  },
-  {
-    id: 3,
-    title: "Premium Penthouse",
-    location: "South Mumbai",
-    price: 35000000,
-    bedrooms: 3,
-    bathrooms: 3,
-    area: 3200,
-    type: "Penthouse",
-    rating: 5,
-    reviews: 4,
-    image: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60"
-  },
-  {
-    id: 4,
-    title: "Heritage Bungalow",
-    location: "Alibaug",
-    price: 18000000,
-    bedrooms: 5,
-    bathrooms: 4,
-    area: 4200,
-    type: "Bungalow",
-    rating: 5,
-    reviews: 5,
-    image: "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60"
-  },
-  {
-    id: 5,
-    title: "Gated Community House",
-    location: "Pune",
-    price: 8500000,
-    bedrooms: 4,
-    bathrooms: 3,
-    area: 2200,
-    type: "House",
-    rating: 4,
-    reviews: 6,
-    image: "https://images.unsplash.com/photo-1493809842364-78817add7ffb?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60"
-  },
-  {
-    id: 6,
-    title: "Luxury Sea-Facing Villa",
-    location: "Goa",
-    price: 25000000,
-    bedrooms: 4,
-    bathrooms: 4,
-    area: 3800,
-    type: "Villa",
-    rating: 5,
-    reviews: 9,
-    image: "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60"
-  }
-];
 
 export default PropertyPage;

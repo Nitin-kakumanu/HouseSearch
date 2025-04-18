@@ -10,6 +10,12 @@ import ProfilePage from "./components/profile";
 import PropertiesPage from "./components/Properties";
 import Properties from "./components/propertysell";
 import Propertyrent from "./components/propertyrent";
+import AdminPage from "./admin/AdminBuy";
+import AdminPropertyDashboard from "./admin/AdminRent";
+import AdminPropertiesPage from "./admin/AdminSell";
+import Admin from "./admin/Admin";
+// import AdminPropertyBuy from "./admin/AdminBuy";
+// import AdminDashboard from "./admin/Admin";
 
 
 function App() {
@@ -25,6 +31,10 @@ function App() {
         <Route path="/properties/sell" element={<Properties />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/create" element={<CreatePage />} />
+        <Route path="/admin" element={<Admin />} />
+        <Route path="/admin/rent" element={<AdminPropertyDashboard />} />
+        <Route path="/admin/buy" element={<AdminPage />} />
+        <Route path="/admin/sell" element={<AdminPropertiesPage />} />
         <Route path="/properties/rent" element={<Propertyrent />} />
       </Routes>
     </Router>
